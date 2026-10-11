@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function createdByCurrentUser() {
+      return request.resource.data.createdBy.uid == request.auth.uid;
+    }
+
+    match /raffleTickets/{ticketId} {
+      allow create: if request.auth != null
+        && request.resource.data.createdBy.uid == request.auth.uid
+        && request.resource.data.buyerName is string
+        && request.resource.data.buyerEmail is string
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0;
+
+      allow read: if request.auth != null
+        && resource.data.createdBy.uid == request.auth.uid;
+
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.createdBy.uid == request.auth.uid;
+    }
+
+    match /modules/tombola/templates/{templateId} {
+      allow create: if signedIn()
+        && createdByCurrentUser()
+        && request.resource.data.name is string
+        && request.resource.data.title is string;
+
+      allow read: if signedIn();
+
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.createdBy.uid == request.auth.uid;
+    }
+
+    match /modules/tombola/batches/{batchId} {
+      allow create: if signedIn()
+        && createdByCurrentUser()
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0
+        && request.resource.data.startNumber is number
+        && request.resource.data.endNumber is number;
+
+      allow read: if signedIn();
+
+      allow update, delete: if false;
+    }
+
+    match /modules/tombola/assets/{assetId} {
+      allow create: if signedIn()
+        && createdByCurrentUser()
+        && request.resource.data.name is string
+        && request.resource.data.url is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.contentType is string;
+
+      allow read: if signedIn();
+
+      allow update: if false;
+      allow delete: if signedIn()
+        && resource.data.createdBy.uid == request.auth.uid;
+    }
+  }
+}
